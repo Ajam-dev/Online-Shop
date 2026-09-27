@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>درگاه آزمایشی</title>
+</head>
+<body>
+    <h1>درگاه پرداخت آزمایشی</h1>
+    <p>
+        شماره سفارش:
+        {{payment.order.order_number}}
+    </p>
+    <p>
+        مبلغ:
+        {{payment.amount}}
+        تومان
+    </p>
+    <p>
+        وضعیت:
+        {{payment.get_status_display}}
+    </p>
+
+    <form method="post" action="{% url 'payments:test_payment_result' payment.id 'success' %}">
+        {% csrf_token %}
+        <button type="submit">
+            پرداخت موفق
+        </button>
+    </form>
+
+    <form method="post" action="{% url 'payment:test_payment_result' payment.id 'failed' %}">
+        {% csrf_token %}
+        <button type="submit">
+            پرداخت ناموفق
+        </button>
+    </form>
+</body>
+</html>

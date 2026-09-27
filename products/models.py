@@ -39,8 +39,8 @@ class Brand(models.Model):
         return self.name
 
 class Product(models.Model):
-    category = models.ForeignKey("Category",on_delete=models.SET_NULL,null=True, blank=True, related_name="products", verbose_name="دسته بندی")
-    brand = models.ForeignKey("Brand", on_delete= models.SET_NULL, null=True, blank=True, related_name="products", verbose_name="برند")
+    category = models.ForeignKey(Category,on_delete=models.SET_NULL,null=True, blank=True, related_name="products", verbose_name="دسته بندی")
+    brand = models.ForeignKey(Brand, on_delete= models.SET_NULL, null=True, blank=True, related_name="products", verbose_name="برند")
     name = models.CharField(max_length=120, verbose_name="نام محصول")
     slug = models.SlugField(max_length=180, unique=True, verbose_name="اسلاگ")
     sku = models.CharField(max_length=50, unique=True, verbose_name="کد محصول")
@@ -49,10 +49,11 @@ class Product(models.Model):
     price = models.PositiveBigIntegerField(validators=[MinValueValidator(0)] ,verbose_name="قیمت")
     discount_percent = models.PositiveSmallIntegerField(validators=[MinValueValidator(0),MaxValueValidator(100)], verbose_name="درصد تخفیف")
     stock = models.PositiveIntegerField(default=0, verbose_name="موجودی")
+    reserved_stock = models.PositiveIntegerField(default=0, verbose_name="موجودی رزرو شده")
     min_order_quantity = models.PositiveIntegerField(default=1, verbose_name="حداقل تعداد سفارش")
-    max_order_quantity = models.PositiveIntegerField(default=1, null=True, blank=True, verbose_name="حداکثر تعداد سفارش")
-    is_active = models.BooleanField(default=True, verbose_name="قابل فروش")
-    is_available = models.BooleanField(default=True, verbose_name="در دسترس")
+    max_order_quantity = models.PositiveIntegerField(null=True, blank=True, verbose_name="حداکثر تعداد سفارش")
+    is_active = models.BooleanField(default=True, verbose_name="در دسترس")
+    is_available = models.BooleanField(default=True, verbose_name="قابل فروش")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="تاریخ ایجاد")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="تاریخ بروزرسانی")
     has_variant = models.BooleanField(default=False, verbose_name="دارای تنوع")
@@ -70,8 +71,12 @@ class Product(models.Model):
         return self.price * (100 - self.discount_percent) // 100
     
     @property
+    def available_stock(self):
+        return max(self.stock - self.reserved_stock, 0)
+    
+    @property
     def is_in_stock(self):
-        return self.stock > 0
+        return self.available_stock > 0
     
     def can_order(self, quantity = 1):
         if not self.is_active:
@@ -83,12 +88,12 @@ class Product(models.Model):
         if self.max_order_quantity:
             if quantity > self.max_order_quantity:
                 return False
-        if quantity > self.stock:
+        if quantity > self.available_stock:
             return False
         return True
 
 class ProductImage(models.Model):
-    product = models.ForeignKey("Product", on_delete=models.CASCADE, related_name="images", verbose_name="محصول")
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="images", verbose_name="محصول")
     image = models.ImageField(upload_to="products/gallery/", verbose_name="تصویر")
     alt_text = models.CharField(max_length=150, blank=True, verbose_name="متن جایگزین")
     is_main = models.BooleanField(default=False, verbose_name="تصویر اصلی")
@@ -117,7 +122,7 @@ class Attribute(models.Model):
         return self.name
 
 class AttributeValue(models.Model):
-    attribute = models.ForeignKey("Attribute", on_delete=models.CASCADE, related_name="values", verbose_name="ویژگی")
+    attribute = models.ForeignKey(Attribute, on_delete=models.CASCADE, related_name="values", verbose_name="ویژگی")
     value = models.CharField(max_length=100, verbose_name="مقدار")
     
     class Meta:
@@ -135,11 +140,12 @@ class AttributeValue(models.Model):
         return f"{self.attribute.name}: {self.value}"
     
 class ProductVariant(models.Model):
-    product = models.ForeignKey("Product", on_delete=models.CASCADE, related_name="variants", verbose_name="محصول")
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="variants", verbose_name="محصول")
     sku = models.CharField(max_length=50, unique=True, verbose_name="کد کالا")
     price = models.PositiveBigIntegerField(null=True, blank=True, verbose_name="قیمت")
     discount_percent = models.PositiveSmallIntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(100)],verbose_name="درصد تخفیف")
     stock = models.PositiveIntegerField(default=0, verbose_name="موجودی")
+    reserved_stock = models.PositiveIntegerField(default=0,verbose_name="موجودی رزرو شده")
     is_active = models.BooleanField(default=True, verbose_name="فعال")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="تاریخ ایجاد")
     update_at = models.DateTimeField(auto_now=True, verbose_name="تاریخ بروز رسانی")
@@ -159,13 +165,17 @@ class ProductVariant(models.Model):
         return self.price * (100 - self.discount_percent) // 100
     
     @property
+    def available_stock(self):
+        return max(self.stock - self.reserved_stock, 0)
+    
+    @property
     def is_in_stock(self):
-        return self.stock > 0
+        return self.available_stock > 0
     
 
 class VariantAttribute(models.Model):
-    variant = models.ForeignKey("ProductVariant", on_delete=models.CASCADE, related_name="variant_attributes", verbose_name="تنوع محصول ")
-    attribute_value = models.ForeignKey("AttributeValue", on_delete=models.CASCADE, related_name="variant_attribute", verbose_name="مقدار ویژگی ها")
+    variant = models.ForeignKey(ProductVariant, on_delete=models.CASCADE, related_name="variant_attributes", verbose_name="تنوع محصول ")
+    attribute_value = models.ForeignKey(AttributeValue, on_delete=models.CASCADE, related_name="variant_attributes", verbose_name="مقدار ویژگی ها")
     
     class Meta:
         verbose_name = "ویژگی تنوع محصول"
@@ -182,8 +192,8 @@ class VariantAttribute(models.Model):
         return f"{self.variant} - {self.attribute_value}"
 
 class ProductReview(models.Model):
-    user = models.ForeignKey(settings.AUTH_user_MODEL, on_delete=models.CASCADE, related_name="porduct_reviews")
-    product = models.ForeignKey("Product", on_delete=models.CASCADE, related_name="reviews", verbose_name="محصول")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="product_reviews")
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="reviews", verbose_name="محصول")
     rating = models.PositiveSmallIntegerField(validators=[MinValueValidator(0), MaxValueValidator(5)], verbose_name="امتیاز")
     comment = models.TextField(blank=True, verbose_name="متن نظر")
     is_approved = models.BooleanField(default=False, verbose_name="تایید شده")
@@ -206,7 +216,7 @@ class ProductReview(models.Model):
     
 class ProductFavorite(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="favorite_products", verbose_name="کاربر")
-    product = models.ForeignKey("Product", on_delete=models.CASCADE, related_name="favorited_by", verbose_name="محصول")
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="favorited_by", verbose_name="محصول")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="تاریخ ایجاد")
     
     class Meta:
@@ -222,6 +232,5 @@ class ProductFavorite(models.Model):
     
     def __str__(self):
         return f"{self.user} - {self.product}"
-    
         
 

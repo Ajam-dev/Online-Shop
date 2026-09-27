@@ -8,12 +8,6 @@ class GenderOption(models.TextChoices):
     female = ('f','زن')
     none = ('n','نمیخواهم مشخص کنم')
     
-class RoleChoices(models.TextChoices):
-    staff_user = ('su','کارمند پشتیبان')
-    admin_user = ('au','کارمند محصولات')
-    manager_user = ('mu','مدیر')
-    general_user = ('gu','کاربر عادی')
-
 
 class MyUser(AbstractUser):
     phone_number = models.CharField(max_length=11,null=True,blank=True,verbose_name='شماره تلفن')
