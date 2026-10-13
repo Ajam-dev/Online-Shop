@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>انتخاب درگاه پرداخت</title>
+</head>
+<body>
+    <h1>پرداخت سفارش</h1>
+    {% if messages %}
+        {% for message in messages %}
+            <p>
+                {{ message }}
+            </p>
+        {% endfor %}
+    {% endif %}
+    <h2>
+        اطلاعات سفارش
+    </h2>
+    <p>
+        شماره سفارش:
+        {{ order.order_number }}
+    </p>
+    <p>
+        مبلغ کل:
+        {{ order.total_amount }}
+    </p>
+    <p>
+        وضعیت:
+        {{ order.get_status_display }}
+    </p>
+    <hr>
+    <h2>
+        اطلاعات آدرس
+    </h2>
+    <p>
+        گیرنده:
+        {{ order.phone_number }}
+    </p>
+    <p>
+        استان:
+        {{ order.province }}
+    </p>
+    <p>
+        شهر:
+        {{ order.city }}
+    </p>
+    <p>
+        آدرس:
+        {{ order.address }}
+    </p>
+    <p>
+        کد پستی:
+        {{ order.postal_code }}
+    </p>
+    <hr>
+    <h2>
+        انتخاب درگاه پرداخت
+    </h2>
+    <form method="post">
+        {% csrf_token %}
+
+        {{form.non_field_errors}}
+        {{form.gateway.errors}}
+
+        <p>{{form.gateway.label}}</p>
+        {{form.gateway}}
+        <button type="submit">
+            پرداخت {{ order.total_amount }}
+        </button>
+    </form>
+</body>
+</html>

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تاریخچه سفارش ها</title>
+</head>
+<body>
+    <h2>تاریخچه سفارش های من</h2>
+    {% if messages %}
+        {% for message in messages %}
+            <p>{{ message }}</p>
+        {% endfor %}
+    {% endif %}
+
+    {% if orders %}
+        {% for order in orders %}
+            <section>
+                <hr>
+                <h2>سفارش {{ order.order_number }}</h2>
+                <p>
+                    تاریخ ثبت:
+                    {{order.created_at|date:"Y/m/d H:i"}}
+                </p>
+                <p>
+                    مبلغ کل:
+                    {{ order.total_amount }}
+                    تومان
+                </p>
+                <p>
+                    وضعیت سفارش:
+                    {{ order.get_status_display }}
+                </p>
+                {% if order.close_at %}
+                    <p>
+                        تاریخ بسته شدن سفارش:
+                        {{ order.close_at|date:"Y/m/d H:i" }}
+                    </p>
+                {% endif %}
+                <a href="{% url 'orders:detail' order_id=order.id %}">
+                    مشاهده جزئیات سفارش
+                </a>
+            </section>
+        {% endfor %}
+    {% else %}
+        <p>هنوز سفارشی ثبت نکرده اید.</p>
+    {% endif %}
+
+    <hr>
+    <a href="{% url 'orders:checkout' %}">
+        بازگشت به تسویه حساب
+    </a>
+    
+</body>
+</html>

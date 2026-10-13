@@ -13,6 +13,7 @@ class Status(models.TextChoices):
 class Gateway(models.TextChoices):
     ZARINPAL = ("zarinpal", "زرین پال")
     TEST = ("test","درگاه آزمایشی")
+    FAKE = ("fake", "درگاه فیک")
 
 class Payment(models.Model):
     order = models.ForeignKey(Order, on_delete=models.PROTECT, related_name="payments", verbose_name="سفارش")

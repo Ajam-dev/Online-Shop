@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سبد خرید</title>
+</head>
+<body>
+    <header>
+        {% if messages %}
+            {% for message in messages %}
+                {{message}}
+            {% endfor %}
+        {% endif %}
+        <h2>سبد خرید</h2>
+        {% if items %}
+            {% for item in items %}
+                <article>
+                    <h3>
+                        {{ item.product.name }}
+                    </h3>
+                    {% if item.product.images.count > 0 %}
+                        <img 
+                        src="{{ item.product.images.all.0.image.url }}" 
+                        alt="{{ item.product.name }}"
+                        width="200"
+                        >
+                    {% endif %}
+                    <p>
+                        قیمت واحد:
+                        {{ item.product.final_price }}
+                        تومان
+                    </p>
+                    <div>
+                        <p>
+                            تعداد:
+                            {{ item.quantity }}
+                        </p>
+                        <form 
+                        method="post"
+                        action="{% url 'cart:decrease_quantity' item_id=item.id %}"
+                        style="display: inline;"
+                        >
+                            {% csrf_token %}
+                            <button type="submit">-</button>
+                        </form>
+                        <span>
+                            {{ item.quantity }}
+                        </span>
+                        <form 
+                        method="post"
+                        action="{% url 'cart:increase_quantity' item_id=item.id %}"
+                        style="display: inline;"
+                        >
+                            {% csrf_token %}
+                            <button type="submit">+</button>
+                        </form>
+                        <form 
+                        method="post"
+                        action="{% url 'cart:remove_from_cart' item_id=item.id %}"
+                        style="display: inline;"
+                        >
+                            {% csrf_token %}
+                            <button type="submit">حذف</button>
+                        </form>
+                    </div>
+                        <p>
+                        مبلغ:
+                        {{ item.total_price }}
+                        تومان
+                    </p>
+
+                    <hr>
+
+                </article>
+            {% endfor %}
+            <hr>
+            <h2>
+                مبلغ کل  سبد خرید:
+                {{ total_price }}
+                تومان
+            </h2>
+        {% else %}
+            <p>
+                سبد خرید شما خالی  است
+            </p>
+        {% endif %}
+        <a href="{% url 'products:product_list' %}">
+            ادامه خرید
+        </a>
+    </header>
+</body>
+</html>

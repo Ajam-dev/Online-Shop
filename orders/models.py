@@ -12,10 +12,12 @@ class Status(models.TextChoices):
     SHIPPED = ("shipped","ارسال شده")
     DELIVERED = ("delivered","تحویل داده شده")
     CANCELLED = ("cancelled","لغو شده")
+    EXPIRED = ("expired","منقضی شده")
 
 class Order(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="orders", verbose_name="کاربر")
     order_number = models.CharField(max_length=30, unique=True, verbose_name="شماره سفارش")
+    checkout_key = models.UUIDField(null=True, blank=True, editable=False, verbose_name="کلید پرداختی")
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING_PAYMENT, verbose_name="وضعیت سفارش")
     recipient_name = models.CharField(max_length=100, verbose_name="نام گیرنده")
     phone_number = models.CharField(max_length=11, verbose_name="شماره تماس")
@@ -28,11 +30,22 @@ class Order(models.Model):
     total_amount =models.PositiveBigIntegerField(default=0, verbose_name="مبلغ کل")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="تاریخ ایجاد")
     update_at = models.DateTimeField(auto_now = True, verbose_name="تاریخ بروز رسانی")    
+    expires_at = models.DateTimeField(null=True, blank=True, verbose_name="تاریخ انقضای سفارش")
+    close_at = models.DateTimeField(null=True, blank = True, verbose_name="زمان بسته شدن سفارش")
+    paid_at = models.DateTimeField(null=True, blank=True, verbose_name="تاریخ پرداخت")
     
     class Meta:
         verbose_name = "سفارش"
         verbose_name_plural = "سفارش"
         ordering = ["-created_at"]
+        
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "checkout_key"],
+                condition=models.Q(status=Status.PENDING_PAYMENT),
+                name = "unique_pending_checkout_per_user",
+            )
+        ]
         
     def __str__(self):
         return self.order_number

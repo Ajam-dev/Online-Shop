@@ -28,7 +28,7 @@
         </button>
     </form>
 
-    <form method="post" action="{% url 'payment:test_payment_result' payment.id 'failed' %}">
+    <form method="post" action="{% url 'payments:test_payment_result' payment.id 'failed' %}">
         {% csrf_token %}
         <button type="submit">
             پرداخت ناموفق

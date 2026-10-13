@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسویه حساب</title>
+</head>
+<body>
+    <h1>تسویه حساب</h1>
+    {% if messages %}
+        {% for message in messages %}
+            <p>
+                {{message}}
+            </p>
+        {% endfor %}
+    {% endif %}
+    {% if cart_empty %}
+    <h2>سبد خرید شما خالی است.</h2>
+    {% elif has_pending_order %}
+        <h2>محصولات سفارش</h2>
+        {% for item in order_items %}
+            <div>
+                <p>{{ item.product_name }}</p>
+                <p>تعداد: {{ item.quantity }}</p>
+                <p>قیمت واحد: {{ item.unit_price }}</p>
+                <p> قیمت کل: {{ item.total_price }}</p>
+            </div>
+        {% endfor %}
+        <hr>
+        <h2>سفارش در انتظار پرداخت</h2>
+        <p>شماره سفارش: {{order.order_number}}</p>
+        <p>مبلغ کل: {{order.total_amount}}</p>
+        <p>وضعیت: {{order.get_status_display}}</p>
+        
+        <h3>آدرس ارسال</h3>
+        
+        <p>گیرنده: {{order.recipient_name}}</p>
+        <p>شماره تماس: {{order.phone_number}}</p>
+        <p>استان: {{order.province}}</p>
+        <p>شهر: {{ order.city }}</p>
+        <p>آدرس: {{ order.address }}</p>
+        <p>کد پستی: {{order.postal_code}}</p>
+
+        <hr>
+
+        <a href="{% url 'payments:select_gateway' order_id=order.id %}">
+            انتخاب درگاه پرداخت
+        </a>
+    {% else %}
+        <h2>محصولات سبد خرید</h2>
+        {% for item in cart_items %}
+            <div>
+                <p>{{item.product.name}}</p>
+                <p>تعداد: {{ item.quantity }}</p>
+                <p>قیمت واحد: {{ item.product.final_price }}</p>
+                <p> قیمت کل: {{ item.total_price }}</p>
+            </div>
+        {% endfor %}
+        <hr>            
+        <form method="post">
+            {% csrf_token %}
+        
+            {{ form.as_p }}
+            <button type="submit">
+                ادامه
+            </button>
+        </form>
+    {% endif %}    
+</body>
+</html>

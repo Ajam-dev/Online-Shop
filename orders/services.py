@@ -1,13 +1,17 @@
 from django.core.exceptions import ValidationError
-from cart.models import Cart
-from orders.models import Address, OrderItem, Order, Status
+from cart.models import Cart, CartItem
+from orders.models import Address, OrderItem, Order, Status as OrderStatus
 from django.db import transaction
 import uuid
 from products.models import Product, ProductVariant
+from django.utils import timezone
+from payments.models import Status as PaymentStatus
+from django.conf import settings
+from datetime import timedelta
 
 
 def generate_order_number():
-    return uuid.uuid4().hex[:20]
+    return f"ORD-{uuid.uuid4().hex[:20].upper()}"
 
 def reserve_order_stock(order):
     """
@@ -156,13 +160,88 @@ def refresh_order_prices(order):
     
     return order
 
-def checkout (user, address):
+def expire_order(order):
+    """
+    سفارش را در صورت عبور از زمان انقضا منقضی می کند
+    اگر برای سفارش یک Payment در وضعیت PENDING وجود داشته باشد
+    ابتدا Payment منقضی شده و رزرو موجودی آزاد می شود
+    اگر هیچ Payment در حال انتضاری وجود ندشاته باشد 
+    فقط وضعیت خود سفارش EXPIRED می شود.
+    """
+    with transaction.atomic():
+        order = (
+            Order.objects.select_for_update().get(pk=order.pk)
+        )
+        now = timezone.now()
+        
+        if order.status != OrderStatus.PENDING_PAYMENT:
+            return order
+        
+        if order.expires_at is None:
+            return order
+        
+        if order.expires_at > now:
+            return order
+        
+        pending_payment = (
+            order.payments.select_for_update().filter(status = PaymentStatus.PENDING).order_by("-created_at").first()
+        )
+        
+        if pending_payment is not None:
+            pending_payment.status = PaymentStatus.EXPIRED
+            pending_payment.save(
+                update_fields =["status","update_at"]
+            )
+            release_order_stock(order)
+        order.status = OrderStatus.EXPIRED
+        order.close_at = now
+        order.save(update_fields=["status","close_at","update_at"])
+    return order
+
+def cancel_order(order):
+    """ 
+    سفارش در انتظار پرداخت را به درخواست کاربر لغو می کند.
+    اگر مهلت سفارش تمام شده باشد، سفارش منقضی می شود
+    در صورت وجود پرداخت در انتظار پرداخت لغو و موجودی رزرو شده آزاد می شود.
+    """
+    with transaction.atomic():
+        order= Order.objects.select_for_update().get(pk=order.pk)
+        now = timezone.now()
+        
+        if order.status != OrderStatus.PENDING_PAYMENT:
+            raise ValidationError("این سفارش در وضعیت قابل لغو نیست")
+        
+        if order.expires_at is not None and order.expires_at <= now:
+            return expire_order(order)
+        
+        pending_payments = list(order.payments.select_for_update().filter(status = PaymentStatus.PENDING))
+        
+        for payment in pending_payments:
+            payment.status = PaymentStatus.CANCELLED
+            payment.save(update_fields = ["status", "update_at"])
+            
+        if pending_payments:
+            release_order_stock(order)
+            
+        order.status = OrderStatus.CANCELLED
+        order.close_at = now
+        order.save(update_fields=["status","close_at", "update_at"])
+    return order
+
+def checkout (user, address, checkout_key):
     
     if address is None:
         raise ValidationError("لطفا یک آدرس برای سفارش انتخاب کنید")
 
     if address.user_id != user.id:
         raise ValidationError("این آدرس متعلق به شما نیست.")
+    
+    if checkout_key is None:
+        raise ValidationError("شناسه checkout معتبر نیست.")
+    
+    existing_order = Order.objects.filter(user = user, checkout_key=checkout_key, status = OrderStatus.PENDING_PAYMENT).first()
+    if existing_order is not None:
+        return existing_order
     
     try:
         cart = Cart.objects.prefetch_related(
@@ -237,10 +316,12 @@ def checkout (user, address):
         total_amount += total_price
         
     with transaction.atomic():
+        expires_at = timezone.now() + timedelta(minutes=settings.ORDER_TIMEOUT_MINUTES)
         order = Order.objects.create(
             user = user,
             order_number = generate_order_number(),
-            status = Status.PENDING_PAYMENT,
+            checkout_key = checkout_key,
+            status = OrderStatus.PENDING_PAYMENT,
             recipient_name = address.recipient_name,
             phone_number = address.phone_number,
             province = address.province,
@@ -251,6 +332,7 @@ def checkout (user, address):
             unit = address.unit,
             
             total_amount = total_amount,
+            expires_at = expires_at,
             
         )
         
@@ -276,10 +358,7 @@ def checkout (user, address):
                 unit_price = unit_price,
                 total_price = total_price,
             )
-        
-        from payments.services import create_payment
-        payment = create_payment(order)    
-    return order, payment
+    return order
         
 def finalize_order(order):
     """
@@ -294,10 +373,10 @@ def finalize_order(order):
     with transaction.atomic():
         order = Order.objects.select_for_update().get(pk=order.pk)
         
-        if order.status == Status.COMPLETED:
+        if order.status == OrderStatus.COMPLETED:
             return order
         
-        if order.status != Status.PAID:
+        if order.status != OrderStatus.PAID:
             raise ValidationError(
                 "این سفارش قابل نهایی سازی نیست"
             )
@@ -364,7 +443,74 @@ def finalize_order(order):
         if cart:
             cart.items.all().delete()
             
-        order.status = Status.COMPLETED
+        order.status = OrderStatus.COMPLETED
         order.save(update_fields=["status","update_at"])
         
     return order
+
+def reorder(user, previous_order):
+    """ 
+    محصولات یک سفارش لغو شده یا منقضی شده را
+    با بررسی وضعیت فعلی محصولات به سبد خرید اضافه می کند.
+    """
+    if previous_order.user_id != user.id:
+        raise ValidationError("این سفارش متعلق به شمانیست.")
+    
+    if previous_order.status == OrderStatus.PENDING_PAYMENT:
+        raise ValidationError("برای سفارش در انتظار پرداخت، ابتدا وضعیت پرداخت را بررسی کنید")
+    
+    added_count = 0
+    skipped_items = []
+    
+    with transaction.atomic():
+        cart, _ = Cart.objects.get_or_create(user=user)
+        cart = Cart.objects.select_for_update().get(pk=cart.pk)
+        order_item = previous_order.items.select_related("product","variant").all()
+        
+        for order_item in previous_order.items.select_related("product","variant").all():
+            product = order_item.product
+            variant = order_item.variant
+            
+            if product is None:
+                skipped_items.append(f"{order_item.product_name}: محصول دیگر وجود ندارد")
+                continue
+            
+            if not product.is_active or not product.is_available:
+                skipped_items.append(f"{product.name}: محصول فعال یا قابل سفارش نیست")
+                continue
+            
+            if variant is not None:
+                if variant.product_id != product.id:
+                    skipped_items.append(f"{product.name}:تنوع انتخاب شده معتبر نیست")
+                    continue
+                
+                if not variant.is_active:
+                    skipped_items.append(f"{product.name}: تنوع انتخاب شده غیر فعال است")
+                    continue
+            
+            cart_item = CartItem.objects.filter(cart=cart, product=product, variant=variant).first()
+            
+            current_quantity = (cart_item.quantity if cart_item is not None else 0)
+            new_quantity = current_quantity + order_item.quantity
+            if new_quantity < product.min_order_quantity:
+                skipped_items.append(f"{product.name}:تعداد نهایی کمتر از حداقل سفارش است")
+                continue
+            if product.max_order_quantity and new_quantity > product.max_order_quantity:
+                skipped_items.append(f"{product.name}: تعداد نهایی بیشتر از حداکثر سفارش است")
+                continue
+            
+            available_stock = variant.available_stock if variant else product.available_stock
+            
+            if new_quantity > available_stock:
+                skipped_items.append(f"{product.name}: موجودی کافی برای تعداد درخواستی شماوجود ندارد")
+                continue
+            
+            if cart_item is not None:
+                cart_item.quantity = new_quantity
+                cart_item.save(update_fields=["quantity", "update_at"])
+            else:
+                CartItem.objects.create(cart=cart, product=product, variant=variant, quantity=order_item.quantity)
+            
+            added_count += 1    
+            
+    return {"added_count":added_count, "skipped_items":skipped_items}

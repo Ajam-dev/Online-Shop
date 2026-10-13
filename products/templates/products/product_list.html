@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محصولات</title>
+</head>
+<body>
+    <header>
+        <h1>فروشگاه آنلاین</h1>
+    </header>
+    <main>
+        <h2>محصولات</h2>
+    {% if products %}
+        {% for product in products %}
+            <article>
+                {% if product.images.count > 0 %}
+                    <img 
+                    src="{{ product.images.all.0.image.url }}" 
+                    alt="{{ product.name }}"
+                    width="200"
+                    >
+                {% endif %}
+
+                <h3>
+                    <a href="{% url 'products:product_detail' slug=product.slug %}">
+                        {{ product.name }}
+                    </a>
+                </h3>
+                <p>{{ product.short_description }}</p>
+                {% if product.is_in_stock %}
+                    {% if product.discount_percent > 0 %}
+                        <p>
+                            قیمت اصلی:
+                            <del>{{ product.price }}</del>
+                        </p>
+                    {% else %}
+                        <p>
+                            قیمت:
+                            {{ product.final_price }}
+                        </p>
+                    {% endif %}
+                {% else %}
+                    <p>ناموجود</p>
+                {% endif %}
+            </article>
+            <hr>
+        {% endfor %}
+    {% else %}
+        <p>در حال حاضر محصولی برای نمایش وجود ندارد</p>
+    {% endif %}
+    </main>
+</body>
+</html>

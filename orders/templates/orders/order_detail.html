@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>جزئیات سفارش</title>
+</head>
+<body>
+    <h1>جزئیات سفارش</h1>
+    {% if messages %}
+        {% for message in messages %}
+            <p>{{message}}</p>
+        {% endfor %}
+    {% endif %}
+    <h2>اطلاعات سفارش</h2>
+    <p>شماره سفارش: {{ order.order_number }}</p>
+    <p>تاریخ ثبت: {{ order.created_at|date:"Y/m/d H:i" }}</p>
+    <p>وضعیت سفارش: {{ order.get_status_display }}</p>
+    <p>مبلغ کل: {{ order.total_amount }} تومان</p>
+
+    <hr>
+
+    <h2>محصولات سفارش</h2>
+
+    {% for item in order_items %}
+        <section>
+            <p>نام محصول: {{ item.product_name }} </p>
+            <p>تعداد: {{ item.quantity }}</p>
+            <p>قیمت واحد: {{ item.unit_price }}</p>
+            <p>قیمت کل: {{ item.total_price }}</p>
+        </section>
+        <hr>
+    {% empty %}
+        <p>محصولی برای این سفارش ثبت نشده است</p>
+    {% endfor %}
+    <h2>آدرس ارسال</h2>
+    <p>گیرنده: {{ order.recipient_name }}</p>
+    <p>شماره تماس: {{ order.phone_number }}</p>
+    <p>استان: {{ order.province }}</p>
+    <p>شهر: {{ order.city }}</p>
+    <p>آدرس: {{ order.address }}</p>
+    <p>کد پستی: {{ order.postal_code }}</p>
+
+    {% if order.plaque %}
+        <p>پلاک: {{ order.plaque }}</p>
+    {% endif %}
+
+    {% if order.unit %}
+        <p>واحد: {{ order.unit }}</p>
+    {% endif %}
+
+    <hr>
+
+    <h2>تاریخچه پرداخت ها</h2>
+
+    {% for payment in payments %}
+        <section>
+            <p>شناسه پرداخت: {{payment.id}}</p>
+            <p>مبلغ: {{payment.amount}}</p>
+            <p>وضعیت پرداخت: {{payment.get_status_display}}</p>
+            <p>درگاه: {{payment.get_gateway_display}}</p>
+            <p>تاریخ ایجاد: {{ payment.created_at|date:"Y/m/d H:i" }}</p>
+        </section>
+        <hr>
+    {% empty %}
+        <p>هنوز پرداختی برای این سفارش انجام نشده است.</p>
+    {% endfor %}
+    {% if order.status == "pending_payment" %}
+        <form method="post" action="{% url 'orders:cancel_order' order_id=order.id %}">
+            {% csrf_token %}
+            <button type="submit">لغو سفارش</button>
+        </form>
+    {% endif %}
+
+    {% if can_pay %}
+        <a href="{% url 'payments:select_gateway' order_id=order.id %}">
+            ادامه پرداخت
+        </a>
+    {% endif %}
+    {% if order.status != "pending_payment" %}
+        <form method="post" action="{% url 'orders:reorder' order_id=order.id %}">
+            {% csrf_token %}
+            <button>خرید مجدد محصولات سفارش</button>
+        </form>
+    {% endif %}
+    <a href="{% url 'orders:history' %}">
+        بازگشت به تاریخچه سفارش ها
+    </a>
+</body>
+</html>

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ product.name }} | Online Shop</title>
+</head>
+<body>
+    <header>
+        <h1>فروشگاه آنلاین</h1>
+    </header>
+    <main>
+        <a href="{% url 'products:product_list' %}">
+            بازگشت به محصولات
+        </a>
+        <hr>
+        <article>
+            {% if images %}
+                {% for image in images %}
+                    <img 
+                    src="{{ image.image.url }}" 
+                    alt="{{ image.alt_text|default:product.name }}"
+                    width="400"
+                    >
+                {% endfor %}
+            {% endif %}
+            
+            <h1>{{ product.name }}</h1>
+
+            {% if product.brand %}
+                <p>
+                    برند:
+                    {{ product.brand.name }}
+                </p>
+            {% endif %}
+            {% if product.category %}
+                <p>
+                    دسته بندی:
+                    {{ product.category.name }}
+                </p>
+            {% endif %}
+            <p>
+                {{ product.short_description }}
+            </p>
+
+            <hr>
+
+            {% if product.is_in_stock %}
+                {% if product.discount_percent > 0 %}
+
+                    <p>
+                        قیمت اصلی:
+                        <del>{{ product.price }}</del>
+                    </p>
+                    <p>
+                        تخفیف:
+                        {{ product.discount_percent }}
+                    </p>
+                    <h2>
+                        {{product.final_price}} تومان
+                    </h2>
+                {% else %}
+                    <h2>
+                        {{ product.final_price }} تومان
+                    </h2>
+                    {% endif %}
+                {% if product.is_in_stock %}
+                    <form method="POST" action="{% url 'cart:add_to_cart' product_id=product.id %}">
+                        {% csrf_token %}
+    
+                        <button type="submit">
+                            افزودن به سبد خرید
+                        </button>
+                    </form>
+                {% endif %}
+            {% else %}
+                    <p>
+                        این محصول ناموجود می باشد
+                    </p>
+            {% endif %}
+
+            <hr>
+
+            <h3>توضیحات محصول</h3>
+            <p>
+                {{ product.description }}
+            </p>
+            <hr>
+
+        </article>
+    </main>
+</body>
+</html>
