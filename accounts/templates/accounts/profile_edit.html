@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %} ویرایش پروفایل | فروشگاه آنلاین {% endblock %}
+
+{% block content %}
+
+<h2>ویرایش پروفایل</h2>
+
+{% if user.profile_picture %}
+    <p>تصویر فعلی پروفایل</p>
+
+    <img 
+        src="{{ user.profile_picture.url }}" 
+        alt="تصویر پروفایل"
+        width="150"
+    >
+{% endif %}
+
+<form method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    {{ form.as_p }}
+
+    <button type="submit">ذخیره تغییرات</button>
+</form>
+
+<a href="{% url 'accounts:profile' %}">
+    بازگشت به پروفایل
+</a>
+
+{% endblock %}

@@ -8,6 +8,7 @@ from payments.forms import PaymentForm
 from orders.models import Order, Status as OrderStatus
 from django.utils import timezone
 from orders.services import expire_order
+from django.views.decorators.http import require_POST
 
 # Create your views here.
 
@@ -52,23 +53,22 @@ def payment_select_gateway(request, order_id):
         form = PaymentForm()
     return render(request, "payments/select_gateway.html",{"form":form,"order":order})
 
+@login_required
 def test_gateway(request, payment_id):
-    payment = get_object_or_404(Payment,id = payment_id)
+    payment = get_object_or_404(Payment.objects.select_related("order"),id=payment_id,order__user=request.user)
     return render(request,"payments/test_gateway.html",{"payment":payment})
 
+@login_required
+@require_POST
 def test_payment_result(request, payment_id, result):
-    if request.method != "POST":
-        return redirect("payments:test_gateway", payment_id=payment_id)
     
-    payment = get_object_or_404(Payment, id=payment_id)
-
+    payment = get_object_or_404(Payment.objects.select_related("order"),id=payment_id, order__user=request.user)
 
     try:
         payment =verify_payment(payment, result = result)
     
     except ValidationError as e:
         messages.error(request, str(e))
-        
         return redirect("payments:test_gateway", payment_id=payment.id)
 
     if payment.status == PaymentStatus.SUCCESS:

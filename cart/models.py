@@ -32,5 +32,11 @@ class CartItem(models.Model):
         return f"{self.product} x  {self.quantity}"
     
     @property
+    def unit_price(self):
+        if self.variant_id is not None:
+            return self.variant.final_price
+        return self.product.final_price
+    
+    @property
     def total_price(self):
-        return self.product.final_price * self.quantity
+        return self.unit_price * self.quantity

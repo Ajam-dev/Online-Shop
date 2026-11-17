@@ -1,11 +1,10 @@
-<!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ورود | Online Shop</title>
-</head>
-<body>
+{% extends "base.html" %}
+
+{% block title %}
+    ورود | فروشگاه آنلاین
+{% endblock %}
+
+{% block content %}
     <header>
         <h1>فروشگاه آنلاین</h1>
     </header>
@@ -26,6 +25,8 @@
                 ورود    
             </button>
         </form>
+        <p>
+            <a href="{% url 'accounts:password_reset' %}"> فراموشی رمز عبور </a>
+        </p>
     </main>
-</body>
-</html>
+{% endblock %}

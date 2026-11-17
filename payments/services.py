@@ -71,17 +71,19 @@ def create_payment(order, gateway_type):
 
 def verify_payment(payment, result = None):
     
+    order_id = Payment.objects.values_list("order_id", flat=True,).get(pk=payment.pk)
+    
     with transaction.atomic():
+        
+        order = Order.objects.select_for_update().get(pk=order_id)
+        payment = (Payment.objects.select_for_update().get(pk=payment.pk, order_id=order.pk))
         now = timezone.now()
-        payment = (Payment.objects.select_for_update().get(pk=payment.pk))
         
         if payment.status != PaymentStatus.PENDING:
             raise ValidationError(
                 "این پرداخت قبلا تعیین تکلیف شده است."
             )
-        
-        order = (Order.objects.select_for_update().get(pk=payment.order_id))
-            
+                    
         if order.status != OrderStatus.PENDING_PAYMENT:
             raise ValidationError(
                 "این سفارش در وضعیت قابل پرداخت نیست"
@@ -102,13 +104,13 @@ def verify_payment(payment, result = None):
         gateway_result = gateway.verify_payment(payment, result = result)
         print("GATEWAY RESULT:", gateway_result)
         
-        if not gateway_result["success"]:
+        if not gateway_result.get("success", False):
             payment.status = PaymentStatus.FAILED
             payment.save(update_fields=["status","update_at"])
             release_order_stock(order)
             return payment
         
-        if gateway_result["amount"] != payment.amount:
+        if gateway_result.get("amount") != payment.amount or gateway_result.get("reference_id") is None:
             payment.status = PaymentStatus.FAILED
             payment.save(update_fields=["status","update_at"])
             release_order_stock(order)

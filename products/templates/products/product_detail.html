@@ -1,3 +1,5 @@
+{% load static %}
+
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -13,81 +15,142 @@
         <a href="{% url 'products:product_list' %}">
             بازگشت به محصولات
         </a>
-        <hr>
-        <article>
-            {% if images %}
-                {% for image in images %}
-                    <img 
-                    src="{{ image.image.url }}" 
-                    alt="{{ image.alt_text|default:product.name }}"
-                    width="400"
-                    >
+
+        <h2>{{product.name}}</h2>
+
+        {% if images %}
+            <div id="product-images">
+                {% for product_image in images %}
+                    {% if product_image.image %}
+                        <img 
+                        src="{{product_image.image.url}}" 
+                        alt="{{product.name}}"
+                        width="300"
+                        >
+                    {% endif %}
                 {% endfor %}
-            {% endif %}
-            
-            <h1>{{ product.name }}</h1>
+            </div>
+        {% endif %}
 
-            {% if product.brand %}
-                <p>
-                    برند:
-                    {{ product.brand.name }}
+        <hr>
+        {% if product.has_variant %}
+            {% if product_attributes and variants %}
+                <div id="variant-selector">
+                    {% for product_attribute in product_attributes %}
+                        <div class="variant-attribute">
+                            <label for="attribute-{{ product_attribute.attribute.id }}">
+                                {{product_attribute.attribute.name}}:
+                            </label>
+                            <select 
+                                id="attribute-{{ product_attribute.attribute.id }}"
+                                class="variant-attribute-select"
+                                data-attribute-id="{{ product_attribute.attribute.id }}"
+                                required
+                            >
+                                <option value="">انتخاب کنید</option>
+                                {% for value in product_attribute.values %}
+                                    <option value="{{value.id}}">
+                                        {{value.value}}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    {% endfor %}
+                </div>
+                <div id="variant-information" hidden>
+                    <p>
+                        کد کالا:
+                        <span id="variant-sku"></span>
+                    </p>
+                    <p id="variant-original-price-container" hidden>
+                        قیمت اصلی:
+                        <del id="variant-original-price"></del>
+                        تومان
+                    </p>
+                    <p id="variant-discount-container" hidden>
+                        تخفیف:
+                        <span id="variant-discount"></span>%
+                    </p>
+                    <h2>
+                        <span id="variant-final-price"></span>
+                        تومان
+                    </h2>
+                    <p>
+                        موجودی:
+                        <span id="variant-stock"></span>
+                    </p>
+                    <img 
+                        id="variant-image"
+                        src=""
+                        alt="{{product.name}}"
+                        width="300"
+                        hidden
+                    >
+                </div>
+                <p id="variant-message" aria-live="polite">
+                    ابتدا ویژگی محصول را انتخاب کنید
                 </p>
-            {% endif %}
-            {% if product.category %}
-                <p>
-                    دسته بندی:
-                    {{ product.category.name }}
-                </p>
-            {% endif %}
-            <p>
-                {{ product.short_description }}
-            </p>
+                <form 
+                    id="add-to-cart-form"
+                    method="POST"
+                    action="{% url 'cart:add_to_cart' product_id=product.id %}"
+                >
+                    {% csrf_token %}
+                    <input 
+                        type="hidden"
+                        name="variant_id"
+                        id="selected-variant-id"
+                        value=""
+                    >
 
-            <hr>
-
+                    <button type="submit" id="add-to-cart-button" disabled>
+                        افزودن به سبد خرید
+                    </button>
+                </form>
+            {% else %}
+                <p>در حال حاضر تنوع با ویژگی قابل انتخابی برای این محصول ثبت نشده است.</p>
+            {% endif %}
+        {% else %}
             {% if product.is_in_stock %}
                 {% if product.discount_percent > 0 %}
-
                     <p>
                         قیمت اصلی:
                         <del>{{ product.price }}</del>
+                        تومان
                     </p>
                     <p>
                         تخفیف:
-                        {{ product.discount_percent }}
+                        {{ product.discount_percent }}%
                     </p>
-                    <h2>
-                        {{product.final_price}} تومان
-                    </h2>
+                    <h2>{{product.final_price}} تومان</h2>
                 {% else %}
-                    <h2>
-                        {{ product.final_price }} تومان
-                    </h2>
-                    {% endif %}
-                {% if product.is_in_stock %}
-                    <form method="POST" action="{% url 'cart:add_to_cart' product_id=product.id %}">
-                        {% csrf_token %}
-    
-                        <button type="submit">
-                            افزودن به سبد خرید
-                        </button>
-                    </form>
+                    <h2>{{ product.final_price }} تومان</h2>
                 {% endif %}
+                <form 
+                    method="POST"
+                    action="{% url 'cart:add_to_cart' product_id=product.id %}"
+                >
+                    {% csrf_token %}
+                    <button type="submit">
+                        افزودن به سبد خرید
+                    </button>
+                </form>
             {% else %}
-                    <p>
-                        این محصول ناموجود می باشد
-                    </p>
+                <p>این محصول ناموجود می باشد.</p>
             {% endif %}
+        {% endif %}
+        <hr>
 
-            <hr>
-
-            <h3>توضیحات محصول</h3>
-            <p>
-                {{ product.description }}
-            </p>
-            <hr>
+        <h3>توضیحات محصول</h3>
+        <p>
+            {{ product.description }}
+        </p>
+        <hr>
 
         </article>
     </main>
+{{ variants_data|json_script:"variants-data"}}
+
+<script src="{% static 'products/js/product_detail.js' %}" defer></script>
 </body>
 </html>

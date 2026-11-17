@@ -1,0 +1,67 @@
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap');
+
+:root {
+    --primary-color: #198754;
+    --primary-dark: #146c43;
+    --primary-light: #e8f5ee;
+
+    --secondary-color: #f8f9fa;
+    --text-color: #e5e7eb;
+    --white-color: #ffffff;
+    --success-color: #198754;
+    --danger-color: #dc3545;
+    
+    --border-radius: 12px;
+
+    --container-width: 1200px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: "Vazirmatn", sans-serif;
+    background-color: #ffffff;
+    color: var(--text-color);
+    line-height: 1.8;
+}
+
+a {
+    text-decoration: none;
+    color:  inherit;
+}
+
+button,
+input,
+select,
+textarea {
+    font-family: inherit;
+}
+
+img {
+    max-width: 100%;
+}
+
+main {
+    min-height: 60vh;
+}
+
+btn-success {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.form-control:focus,
+form-select:focus  {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.15);
+}
+
+@media (max-width: 768px) {
+
+    main {
+        min-height: 50vh;
+    }
+}

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %} پروفایل کاربری | فروشگاه آنلاین {% endblock %}
+
+{% block content %}
+
+<h2>پروفایل کاربری</h2>
+
+{% if user.profile_picture %}
+    <img 
+        src="{{ user.profile_picture.url }}" 
+        alt="تصویر پروفایل"
+        width="150"
+    >
+{% endif %}
+
+<h3>اطلاعات حساب کاربری</h3>
+
+<p>نام کاربری: {{user.username}}</p>
+<p>ایمیل: {{user.email}}</p>
+
+<p>
+    <a href="{% url 'accounts:email_change' %}">تغییر ایمیل</a>
+</p>
+
+<h3>اطلاعات شخصی</h3>
+
+<p>نام: {{user.first_name|default:"ثبت نشده"}}</p>
+<p>نام خانوادگی: {{user.last_name|default:"ثبت نشده"}}</p>
+<p>شماره تلفن: {{user.phone_number|default:"ثبت نشده"}}</p>
+<p>تاریخ تولد: {{user.birth_date|default:"ثبت نشده"}}</p>
+<p>جنسیت: {{user.get_gender_display|default:"ثبت نشده"}}</p>
+
+<a href="{% url 'accounts:profile_edit' %}">
+    ویرایش پروفایل
+</a>
+
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %} تایید ایمیل جدید | فروشگاه آنلاین {% endblock %}
+
+{% block content %}
+
+<h2>تایید ایمیل جدید</h2>
+
+<p>
+    یک کد شش رقمی به ایمیل زیر ارسال شده است.
+</p>
+
+<form method="POST">
+    {% csrf_token %}
+
+    {{form.as_p}}
+
+    <button type="submit">تایید و تغییر ایمیل</button>
+</form>
+
+<form method="POST" action="{% url 'accounts:resend_email_change_otp' %}">
+    {% csrf_token %}
+    <button type="submit">ارسال مجدد کد تایید</button>
+</form>
+
+<a href="{% url 'accounts:email_change' %}">درخواست تغییر ایمیل جدید</a>
+
+{% endblock %}
